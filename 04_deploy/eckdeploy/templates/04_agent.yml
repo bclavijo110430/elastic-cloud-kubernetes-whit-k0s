@@ -1,0 +1,26 @@
+#########################################################################################
+# descomentar si se desea crear agentes para el cluster  de lo contario no es necesario #
+#########################################################################################
+# apiVersion: agent.k8s.elastic.co/v1alpha1
+# kind: Agent
+# metadata:
+#   name: elastic-agent-test
+#   namespace: default
+# spec:
+#   version: 8.16.1
+#   kibanaRef:
+#     name: kibana-test
+#   fleetServerRef:
+#     name: fleet-server-test
+#   mode: fleet
+#   policyID: eck-agent
+#   daemonSet:
+#     podTemplate:
+#       spec:
+#         serviceAccountName: elastic-agent
+#         automountServiceAccountToken: true
+#         securityContext:
+#           runAsUser: 0
+#         volumes:
+#         - name: agent-data
+#           emptyDir: {}

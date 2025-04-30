@@ -1,0 +1,71 @@
+# -----------------------------------------------------------------------------
+# Despliegue de un clúster de Elasticsearch usando Elastic Cloud on Kubernetes (ECK)
+# - 1 nodo master
+# - 1 nodo data/ingest/ml/transform
+# - Exposición vía LoadBalancer (MetalLB)
+# - Certificado TLS personalizado
+# - Almacenamiento persistente local
+# -----------------------------------------------------------------------------
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: {{  .Values.elasticdeployname  }} # Nombre del despliegue de Elasticsearch
+  annotations:
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  http:
+    service:
+      spec:
+        type: {{ .Values.spec.service.type}} # Configuración para exponer el servicio como LoadBalancer
+    tls:
+      certificate:
+        secretName: {{ .Values.spec.tls.secretnameref }} # Nombre del secreto que contiene el certificado TLS
+  version: {{ .Values.spec.ElasticSearchVersion }} # Versión de Elasticsearch
+  nodeSets:
+  - name: master-nodes # Definición del conjunto de nodos maestros
+    count: {{ .Values.elasticResourcesCount.masternodes }} # Número de nodos maestros
+    config:
+      node.roles: ["master"] # Roles asignados a los nodos maestros
+    volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.elasticResource.storage.name }} # Nombre del volumen para datos
+      spec:
+        accessModes:
+        - ReadWriteOnce # Modo de acceso al volumen
+        resources:
+          requests:
+            storage: {{ .Values.elasticResource.storage.size }} # Tamaño del almacenamiento solicitado
+        storageClassName: {{ .Values.elasticResource.storage.class }} # Clase de almacenamiento utilizada
+  - name: data-nodes # Definición del conjunto de nodos de datos
+    count: {{ .Values.elasticResourcesCount.dataNodes }} # Número de nodos de datos
+    config:
+      node.roles: ["data", "ingest", "ml", "transform"] # Roles asignados a los nodos de datos
+    podTemplate:
+      spec:
+        initContainers:
+        - name: sysctl # Contenedor de inicialización para configurar parámetros del sistema
+          securityContext:
+            privileged: true # Permisos privilegiados para el contenedor
+            runAsUser: 0 # Ejecutar como usuario root
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144'] # Comando para ajustar vm.max_map_count
+        containers:
+        - name: elasticsearch # Contenedor principal de Elasticsearch
+          resources:
+            requests:
+              memory: {{ .Values.elasticResource.request.memory }} # Memoria solicitada para el contenedor
+              cpu:  {{ .Values.elasticResource.request.cpu }} # CPU solicitada para el contenedor
+            limits:
+              cpu:  {{ .Values.elasticResource.limit.cpu }} # Límite de CPU para el contenedor
+              memory: {{ .Values.elasticResource.limit.memory }} # Límite de memoria para el contenedor
+    volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.elasticResource.storage.name }}  # Nombre del volumen para datos
+      spec:
+        accessModes:
+        - ReadWriteOnce # Modo de acceso al volumen
+        resources:
+          requests:
+            storage: {{ .Values.elasticResource.storage.size}} # Tamaño del almacenamiento solicitado
+        storageClassName:  {{ .Values.elasticResource.storage.class}}  # Clase de almacenamiento utilizada

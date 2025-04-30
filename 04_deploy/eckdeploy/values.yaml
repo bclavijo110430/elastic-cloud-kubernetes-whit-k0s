@@ -1,0 +1,73 @@
+########## configuracion global ###########
+# configuraciones de despliegue
+elasticdeployname: "elasticsearch-test" # Nombre del despliegue de Elasticsearch
+kibanadeployname: "kibana-test" # Nombre del despliegue de Kibana
+fleetsdeployname: "fl-server-test" # Nombre del despliegue del servidor Fleet
+
+# anotaciones generales 
+annotations:
+  metallb.universe.tf/address-pool: ipool-test # Pool de direcciones para MetalLB
+  namespace: eck # Namespace donde se desplegarán los recursos
+
+# especificaciones generales
+spec:
+ ElasticSearchVersion: 8.17.4 # Versión de Elasticsearch
+ KibanaVersion: 8.16.1 # Versión de Kibana
+ fleetVersion: 8.16.1 # Versión del servidor Fleet
+
+# tipo de servicio general
+ service:
+  type: LoadBalancer # Tipo de servicio para exponer los recursos
+
+# certificado a aplicar (tiene que existir previamente como secret)
+ tls:
+  secretnameref: "elasticsearch-test-es-cert" # Nombre del secreto que contiene el certificado TLS
+
+### escalamiento de servicios #### 
+
+elasticResourcesCount:
+  masternodes: 1 # Número de nodos maestros de Elasticsearch
+  dataNodes: 1 # Número de nodos de datos de Elasticsearch
+
+elasticResource:
+  request:
+   cpu: 2 # CPU solicitada para Elasticsearch
+   memory: 2Gi # Memoria solicitada para Elasticsearch
+  limit:
+   cpu: 2 # Límite de CPU para Elasticsearch
+   memory: 2Gi # Límite de memoria para Elasticsearch
+  storage:
+   size: 2Gi # Tamaño del almacenamiento para Elasticsearch
+   class: local-path # Clase de almacenamiento
+   name: elasticsearch-data # Nombre del volumen de almacenamiento
+
+kibanaResource:
+  request:
+   cpu: 0.5 # CPU solicitada para Kibana
+   memory: 1Gi # Memoria solicitada para Kibana
+  limit:
+   cpu: 2 # Límite de CPU para Kibana
+   memory: 1.5Gi # Límite de memoria para Kibana
+  nodeOptions:
+   value:  "--max-old-space-size=1048" # Opciones de configuración para el nodo de Kibana
+    
+fleetResource:
+  request:
+   cpu: 1 # CPU solicitada para el servidor Fleet
+   memory: 1Gi # Memoria solicitada para el servidor Fleet
+  limit:
+   cpu: 1.5 # Límite de CPU para el servidor Fleet
+   memory: 1.5Gi # Límite de memoria para el servidor Fleet
+
+## external endpoint ##
+
+externalEndpoints:
+  elasticSearch: "https://elasticsearch-test.elk.external.com:9200" # Endpoint externo para Elasticsearch
+  ipLbElasticSearch: "https://192.168.1.134:8220" # IP del balanceador de carga para Elasticsearch
+  fleetServer: "https://fleetserver.elk.external.com:8220" # Endpoint externo para el servidor Fleet
+  ipLbfleetServer: "https://192.168.1.134:8220" # IP del balanceador de carga para el servidor Fleet
+
+
+
+
+  

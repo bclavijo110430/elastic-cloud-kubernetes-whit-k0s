@@ -1,0 +1,7 @@
+apiVersion: v2
+name: elk-eck
+description: Deploy a small multi‑role elk cluster through ECK
+type: application
+version: 0.1.0      # chart version
+appVersion: "8.17.4" # default elk version
+kubeVersion: ">=1.25.0-0"

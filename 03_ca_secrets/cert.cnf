@@ -1,0 +1,25 @@
+[ req ]
+default_bits       = 4096
+prompt             = no
+default_md         = sha256
+distinguished_name = dn
+req_extensions     = req_ext
+
+[ dn ]
+CN = elk.external.com
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = elasticsearch-test-es-http.eck.svc
+DNS.2 = elasticsearch-test.elk.external.com
+DNS.3 = fleetserver.elk.external.com
+DNS.4 = fl-server-test-agent-http.eck.svc
+DNS.5 = elasticsearch-test-es-http
+DNS.6 = kibana-test.elk.external.com
+DNS.7 = kibana-test-kb-http.eck.svc
+
+
+
+

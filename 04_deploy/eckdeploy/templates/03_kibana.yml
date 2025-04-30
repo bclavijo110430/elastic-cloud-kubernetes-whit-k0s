@@ -1,0 +1,79 @@
+apiVersion: kibana.k8s.elastic.co/v1
+kind: Kibana
+metadata:
+  name: {{ .Values.kibanadeployname}} # Nombre del recurso Kibana
+  annotations:
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}   
+spec:
+  version: {{ .Values.spec.KibanaVersion}} # Versión de Kibana a desplegar
+  http:
+    service:
+      spec:
+        type: {{ .Values.spec.service.type }} # Tipo de servicio HTTP configurado como LoadBalancer
+    tls:
+      certificate:
+        secretName: {{ .Values.spec.tls.secretnameref }} # Nombre del secreto TLS para Kibana
+        
+  count: 1 # Número de réplicas de Kibana
+  elasticsearchRef:
+    name: {{ .Values.elasticdeployname }} # Referencia al clúster de Elasticsearch asociado
+  config:
+    xpack.fleet.agents.elasticsearch.hosts:
+     - "https://{{ .Values.elasticdeployname }}-http.{{ .Values.annotations.namespace }}.svc:9200" # Host interno de Elasticsearch
+     -  {{ .Values.externalEndpoints.elasticSearch}} # Host externo de Elasticsearch
+     -  {{ .Values.externalEndpoints.ipLbElasticSearch}} # Host por IP de Elasticsearch
+    xpack.fleet.agents.fleet_server.hosts: 
+     - "https://{{ .Values.fleetsdeployname }}-http.{{ .Values.annotations.namespace }}.svc:8220" # Host interno del Fleet Server
+     -   {{ .Values.externalEndpoints.fleetServer}} # Host externo del Fleet Server
+     -   {{ .Values.externalEndpoints.ipLbfleetServer}} # Host por IP del Fleet Server
+    xpack.fleet.packages:
+      - name: system
+        version: latest # Paquete del sistema con la última versión
+      - name: elastic_agent
+        version: latest # Paquete del agente de Elastic con la última versión
+      - name: fleet_server
+        version: latest # Paquete del servidor Fleet con la última versión
+    xpack.fleet.agentPolicies:
+      - name: Fleet Server on ECK policy # Política para el servidor Fleet en ECK
+        id: eck-fleet-server
+        namespace: default
+        is_managed: true
+        monitoring_enabled:
+          - logs # Habilitar monitoreo de logs
+          - metrics # Habilitar monitoreo de métricas
+        unenroll_timeout: 900 # Tiempo de espera para desinscripción en segundos
+        package_policies:
+        - name: fleet_server-1
+          id: fleet_server-1
+          package:
+            name: fleet_server # Configuración del paquete Fleet Server
+      - name: Elastic Agent on ECK policy # Política para el agente Elastic en ECK
+        id: eck-agent
+        namespace: default
+        is_managed: true
+        monitoring_enabled:
+          - logs # Habilitar monitoreo de logs
+          - metrics # Habilitar monitoreo de métricas
+        unenroll_timeout: 900 # Tiempo de espera para desinscripción en segundos
+        package_policies:
+          - name: system-1
+            id: system-1
+            package:
+              name: system # Configuración del paquete del sistema
+  podTemplate:
+    spec:
+      containers:
+      - name: kibana
+        env:
+          - name: NODE_OPTIONS
+            value: {{ .Values.kibanaResource.nodeOptions.value}} # Configuración de memoria para Node.js
+        resources:
+          requests:
+            memory: {{ .Values.kibanaResource.request.memory }} # Solicitud de memoria mínima
+            cpu: {{ .Values.kibanaResource.request.cpu }} # Solicitud de CPU mínima
+          limits:
+            memory: {{ .Values.kibanaResource.limit.memory }} # Límite máximo de memoria
+            cpu: {{ .Values.kibanaResource.limit.cpu }} # Límite máximo de CPU
+

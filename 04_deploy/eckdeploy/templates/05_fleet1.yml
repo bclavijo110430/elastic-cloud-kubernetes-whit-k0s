@@ -1,0 +1,96 @@
+apiVersion: agent.k8s.elastic.co/v1alpha1
+kind: Agent
+metadata:
+  name:  {{ .Values.fleetsdeployname }}
+  annotations:
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }} # Anotación para asignar una IP desde el pool de MetalLB
+spec:
+  version: {{ .Values.spec.fleetVersion }} # Versión del agente Elastic
+  http:
+    service:
+      spec:
+        type: {{ .Values.spec.service.type }} # Tipo de servicio para exponer el agente
+    tls:
+      certificate:
+       secretName: {{ .Values.spec.tls.secretnameref }}  # Nombre del secreto que contiene el certificado TLS
+  kibanaRef:
+    name: {{ .Values.kibanadeployname }} # Referencia al recurso Kibana
+  elasticsearchRefs:
+    - name: {{ .Values.elasticdeployname }} # Referencia al recurso Elasticsearch
+  mode: fleet # Modo de operación del agente
+  fleetServerEnabled: true # Habilita el servidor Fleet
+  policyID: eck-fleet-server # ID de la política de Fleet
+  deployment:
+    replicas: 1 # Número de réplicas del despliegue
+    podTemplate:
+      spec:
+        serviceAccountName: elastic-agent # Nombre de la cuenta de servicio asociada
+        automountServiceAccountToken: true # Permite montar el token de la cuenta de servicio
+        securityContext:
+          runAsUser: 0 # Ejecutar como usuario root
+        containers:
+          - name: agent
+            resources:
+              limits:
+                cpu: {{  .Values.fleetResource.limit.cpu }} # Límite de CPU
+                memory: {{ .Values.fleetResource.limit.memory }} # Límite de memoria
+              requests:
+                cpu: {{  .Values.fleetResource.request.cpu }} # Solicitud mínima de CPU
+                memory: {{  .Values.fleetResource.request.memory }}  # Solicitud mínima de memoria
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: elastic-agent
+
+rules:
+- apiGroups: [""] # "" indica el grupo de API principal
+  resources:
+  - pods # Permisos sobre pods
+  - nodes # Permisos sobre nodos
+  - namespaces # Permisos sobre namespaces
+  verbs:
+  - get
+  - watch
+  - list
+- apiGroups: ["coordination.k8s.io"]
+  resources:
+  - leases # Permisos sobre leases
+  verbs:
+  - get
+  - create
+  - update
+- apiGroups: ["apps"]
+  resources:
+  - replicasets # Permisos sobre replicasets
+  verbs:
+  - list
+  - watch
+- apiGroups: ["batch"]
+  resources:
+  - jobs # Permisos sobre jobs
+  verbs:
+  - list
+  - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: elastic-agent # Cuenta de servicio para el agente Elastic
+  namespace: {{.Values.el}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: elastic-agent
+subjects:
+- kind: ServiceAccount
+  name: elastic-agent # Asocia la cuenta de servicio al ClusterRole
+  namespace: {{.Values.annotations.namespace}}
+roleRef:
+  kind: ClusterRole
+  name: elastic-agent # Referencia al ClusterRole
+  apiGroup: rbac.authorization.k8s.io

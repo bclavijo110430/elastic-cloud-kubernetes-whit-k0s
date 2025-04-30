@@ -1,0 +1,23 @@
+---
+all:
+  children:
+    initial_controller:
+      hosts:
+        k0smaster:
+    controller:
+      hosts:
+        k0smaster:
+    worker:
+      hosts:
+        k0swk01:
+        k0swk02:
+  hosts:
+    k0smaster:
+      ansible_host: 192.168.1.54
+    k0swk01:
+      ansible_host: 192.168.1.55
+    k0swk02:
+      ansible_host: 192.168.1.56
+    vars:
+     ansible_user: ansible
+
